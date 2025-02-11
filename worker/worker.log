@@ -1,0 +1,14 @@
+WORKER: 2025/02/09 23:53:55 worker.go:213: Starting worker setup
+WORKER: 2025/02/09 23:54:09 worker.go:265: Worker server running on port 9001
+WORKER: 2025/02/09 23:54:09 worker.go:204: Successfully registered with coordinator at localhost:12345
+WORKER: 2025/02/09 23:54:39 worker.go:273: Resource stats - CPU: 0.00%, Memory: 8.17%, Active Tasks: 0
+WORKER: 2025/02/09 23:55:09 worker.go:273: Resource stats - CPU: 0.00%, Memory: 8.18%, Active Tasks: 0
+WORKER: 2025/02/09 23:55:14 worker.go:78: Performing addition
+WORKER: 2025/02/09 23:55:14 worker.go:98: Addition completed. Result size: 3x3
+WORKER: 2025/02/09 23:55:39 worker.go:273: Resource stats - CPU: 0.00%, Memory: 8.31%, Active Tasks: 0
+WORKER: 2025/02/10 15:14:30 worker.go:213: Starting worker setup
+WORKER: 2025/02/10 15:14:48 worker.go:265: Worker server running on port 9001
+WORKER: 2025/02/10 15:14:49 worker.go:204: Successfully registered with coordinator at localhost:12345
+WORKER: 2025/02/10 18:15:14 worker.go:273: Resource stats - CPU: 0.00%, Memory: 8.45%, Active Tasks: 0
+WORKER: 2025/02/10 18:15:18 worker.go:273: Resource stats - CPU: 0.00%, Memory: 8.47%, Active Tasks: 0
+WORKER: 2025/02/10 23:35:23 worker.go:273: Resource stats - CPU: 0.00%, Memory: 8.49%, Active Tasks: 0

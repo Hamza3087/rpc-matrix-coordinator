@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Matrix Operations</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .matrix-container {
+        margin: 20px 0;
+      }
+      .matrix {
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Matrix Operations</h1>
+    <form id="matrix-form">
+      <label for="rows">Number of Rows:</label>
+      <input type="number" id="rows" name="rows" required min="1" /><br /><br />
+
+      <label for="cols">Number of Columns:</label>
+      <input type="number" id="cols" name="cols" required min="1" /><br /><br />
+
+      <button type="button" onclick="generateMatrixInputs()">
+        Generate Matrices
+      </button>
+    </form>
+
+    <div id="matrices"></div>
+
+    <form id="operation-form" style="display: none">
+      <label for="operation">Select Operation:</label>
+      <select id="operation" name="operation">
+        <option value="add">Addition</option>
+        <option value="multiply">Multiplication</option>
+        <option value="transpose">Transpose</option></select
+      ><br /><br />
+
+      <button type="button" onclick="submitOperation()">Submit</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+      function generateMatrixInputs() {
+        const rows = document.getElementById("rows").value;
+        const cols = document.getElementById("cols").value;
+
+        const container = document.getElementById("matrices");
+        container.innerHTML = "";
+
+        for (let i = 1; i <= 2; i++) {
+          const matrixDiv = document.createElement("div");
+          matrixDiv.className = "matrix-container";
+          matrixDiv.innerHTML = `<h3>Matrix ${i}</h3>`;
+          for (let r = 0; r < rows; r++) {
+            const rowDiv = document.createElement("div");
+            for (let c = 0; c < cols; c++) {
+              rowDiv.innerHTML += `<input type="number" name="matrix${i}" required style="width: 50px;" data-matrix="${i}" data-row="${r}" data-col="${c}">`;
+            }
+            matrixDiv.appendChild(rowDiv);
+          }
+          container.appendChild(matrixDiv);
+        }
+
+        document.getElementById("operation-form").style.display = "block";
+      }
+
+      function submitOperation() {
+  const rows = parseInt(document.getElementById("rows").value); // Convert to int
+  const cols = parseInt(document.getElementById("cols").value); // Convert to int
+
+  const operation = document.getElementById("operation").value;
+
+  const matrix1 = [];
+  const matrix2 = [];
+
+  document.querySelectorAll("input[name='matrix1']").forEach(input => {
+    const row = parseInt(input.getAttribute("data-row"));
+    const col = parseInt(input.getAttribute("data-col"));
+    if (!matrix1[row]) matrix1[row] = [];
+    matrix1[row][col] = parseInt(input.value); // Convert to int
+  });
+
+  document.querySelectorAll("input[name='matrix2']").forEach(input => {
+    const row = parseInt(input.getAttribute("data-row"));
+    const col = parseInt(input.getAttribute("data-col"));
+    if (!matrix2[row]) matrix2[row] = [];
+    matrix2[row][col] = parseInt(input.value); // Convert to int
+  });
+
+  fetch("http://localhost:8081/operation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows, cols, operation, matrix1, matrix2 }),
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.json();
+    })
+    .then(data => {
+      document.getElementById("result").innerHTML = `<h3>Result:</h3><pre>${JSON.stringify(data.result, null, 2)}</pre>`;
+    })
+    .catch(err => {
+      console.error("Error during fetch:", err);
+      alert("An error occurred!");
+    });
+}
+
+    </script>
+  </body>
+</html>
