@@ -1,9 +1,1 @@
-CLIENT: 2025/02/09 23:53:10 client.go:55: Client initialized
-CLIENT: 2025/02/09 23:53:10 client.go:184: Starting client server
-CLIENT: 2025/02/09 23:53:10 client.go:190: Server running on http://localhost:8081
-CLIENT: 2025/02/09 23:55:14 client.go:118: Received POST request from [::1]:61415
-CLIENT: 2025/02/09 23:55:14 client.go:158: Sending task to coordinator: [Worker.Add [[[1 2 3] [4 5 6] [7 8 9]] [[1 2 3] [4 5 6] [7 8 9]]] <nil>]
-CLIENT: 2025/02/09 23:55:14 client.go:179: Task completed successfully
-CLIENT: 2025/02/10 15:14:30 client.go:55: Client initialized
-CLIENT: 2025/02/10 15:14:30 client.go:184: Starting client server
-CLIENT: 2025/02/10 15:14:30 client.go:190: Server running on http://localhost:8081
+
