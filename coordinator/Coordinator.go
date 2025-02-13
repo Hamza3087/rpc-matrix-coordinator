@@ -4,6 +4,8 @@ import (
 	"container/heap"
 	"crypto/tls"
 	"encoding/gob"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/rpc"
@@ -12,6 +14,11 @@ import (
 	"time"
 )
 
+type Config struct {
+	ListenAddress string `json:"listen_address"`
+	CertFile      string `json:"cert_file"`
+	KeyFile       string `json:"key_file"`
+}
 type WorkerStatus struct {
 	Address     string
 	ActiveTasks int
@@ -45,14 +52,29 @@ func (pq *TaskQueue) Pop() interface{} {
 }
 
 type Coordinator struct {
-	workers       map[string]*WorkerStatus
-	taskQueue    TaskQueue
-	mu           sync.RWMutex
-	logger       *log.Logger
+	workers        map[string]*WorkerStatus
+	taskQueue      TaskQueue
+	mu            sync.RWMutex
+	logger        *log.Logger
 	maxWorkerLoad int
+	config        Config
 }
 
-func NewCoordinator() *Coordinator {
+func loadConfig(configPath string) (Config, error) {
+	file, err := os.Open(configPath)
+	if err != nil {
+		return Config{}, err
+	}
+	defer file.Close()
+
+	var config Config
+	if err := json.NewDecoder(file).Decode(&config); err != nil {
+		return Config{}, err
+	}
+	return config, nil
+}
+
+func NewCoordinator(config Config) *Coordinator {
 	logFile, err := os.OpenFile("coordinator.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -63,7 +85,8 @@ func NewCoordinator() *Coordinator {
 		workers:       make(map[string]*WorkerStatus),
 		taskQueue:    make(TaskQueue, 0),
 		logger:       logger,
-		maxWorkerLoad: 5, // Maximum tasks per worker
+		maxWorkerLoad: 5,
+		config:       config,
 	}
 	heap.Init(&c.taskQueue)
 	
@@ -72,6 +95,7 @@ func NewCoordinator() *Coordinator {
 	
 	return c
 }
+
 
 func (c *Coordinator) monitorWorkers() {
 	ticker := time.NewTicker(10 * time.Second)
@@ -169,44 +193,66 @@ func (c *Coordinator) processTasks() {
 		// Find least busy worker
 		worker := c.getLeastBusyWorker()
 		if worker == nil {
-			task.Done <- fmt.Errorf("no available workers")
+			// No available worker, requeue the task
+			c.mu.Lock()
+			heap.Push(&c.taskQueue, task)
+			c.mu.Unlock()
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
 		// Execute task
 		worker.ActiveTasks++
 		go func(w *WorkerStatus, t *Task) {
+			defer func() {
+				c.mu.Lock()
+				w.ActiveTasks--
+				w.LastActive = time.Now()
+				c.mu.Unlock()
+			}()
+
 			err := w.Client.Call(t.Data[0].(string), t.Data[1], t.Result)
-			
-			c.mu.Lock()
-			w.ActiveTasks--
-			w.LastActive = time.Now()
-			c.mu.Unlock()
-			
-			t.Done <- err
+			if err != nil {
+				c.logger.Printf("Worker %s failed to execute task: %v. Reassigning task.", w.Address, err)
+				// Reassign the task
+				c.mu.Lock()
+				heap.Push(&c.taskQueue, t)
+				c.mu.Unlock()
+			} else {
+				t.Done <- nil // Task completed successfully
+			}
 		}(worker, task)
 	}
 }
 
+
 func main() {
+	configPath := flag.String("config", "coordinator_config.json", "Path to configuration file")
+	flag.Parse()
+
+	config, err := loadConfig(*configPath)
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
 	gob.Register([][]int{})
 	gob.Register([2][][]int{})
 
-	coordinator := NewCoordinator()
+	coordinator := NewCoordinator(config)
 	rpc.Register(coordinator)
 
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	cert, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {
 		coordinator.logger.Fatalf("Error loading certificates: %v", err)
 	}
 
-	config := &tls.Config{Certificates: []tls.Certificate{cert}}
-	listener, err := tls.Listen("tcp", ":12345", config)
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+	listener, err := tls.Listen("tcp", config.ListenAddress, tlsConfig)
 	if err != nil {
 		coordinator.logger.Fatalf("Error starting server: %v", err)
 	}
 	defer listener.Close()
 
-	coordinator.logger.Println("Server running on port 12345")
+	coordinator.logger.Printf("Server running on %s", config.ListenAddress)
 	rpc.Accept(listener)
 }
