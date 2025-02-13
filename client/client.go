@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/gob"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,40 +14,49 @@ import (
 )
 
 type Config struct {
-	CoordinatorAddress string
-	MaxRetries         int
-	TimeoutSeconds     int
-	MaxMatrixSize      int
+	CoordinatorAddress string json:"coordinator_address"
+	ListenAddress      string json:"listen_address"
+	MaxRetries         int    json:"max_retries"
+	TimeoutSeconds     int    json:"timeout_seconds"
+	MaxMatrixSize      int    json:"max_matrix_size"
 }
 
 type Request struct {
-	Rows      int     `json:"rows"`
-	Cols      int     `json:"cols"`
-	Operation string  `json:"operation"`
-	Matrix1   [][]int `json:"matrix1"`
-	Matrix2   [][]int `json:"matrix2"`
+	Rows      int     json:"rows"
+	Cols      int     json:"cols"
+	Operation string  json:"operation"
+	Matrix1   [][]int json:"matrix1"
+	Matrix2   [][]int json:"matrix2"
 }
 
 type Response struct {
-	Result [][]int `json:"result"`
-	Error  string  `json:"error,omitempty"`
+	Result [][]int json:"result"
+	Error  string  json:"error,omitempty"
 }
 
 var (
-	config = Config{
-		CoordinatorAddress: "localhost:12345",
-		MaxRetries:         3,
-		TimeoutSeconds:     30,
-		MaxMatrixSize:      1000,
-	}
+	config Config
 	logger *log.Logger
 )
+
+func loadConfig(configPath string) (Config, error) {
+	file, err := os.Open(configPath)
+	if err != nil {
+		return Config{}, err
+	}
+	defer file.Close()
+
+	var config Config
+	if err := json.NewDecoder(file).Decode(&config); err != nil {
+		return Config{}, err
+	}
+	return config, nil
+}
 
 func init() {
 	gob.Register([][]int{})
 	gob.Register([2][][]int{})
-	
-	// Initialize logger
+
 	logFile, err := os.OpenFile("client.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -156,7 +166,7 @@ func handleOperation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Printf("Sending task to coordinator: %v", task)
-	
+
 	// Set timeout for the RPC call
 	done := make(chan error, 1)
 	go func() {
@@ -181,15 +191,22 @@ func handleOperation(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	logger.Println("Starting client server")
+	configPath := flag.String("config", "client_config.json", "Path to configuration file")
+	flag.Parse()
+
+	var err error
+	config, err = loadConfig(*configPath)
+	if err != nil {
+		logger.Fatalf("Error loading config: %v", err)
+	}
+
+	logger.Printf("Starting client server with coordinator at %s", config.CoordinatorAddress)
 
 	http.Handle("/", http.FileServer(http.Dir("./")))
 	http.HandleFunc("/operation", handleOperation)
 
-	port := ":8081"
-	logger.Printf("Server running on http://localhost%s", port)
-
-	if err := http.ListenAndServe(port, nil); err != nil {
+	logger.Printf("Server running on %s", config.ListenAddress)
+	if err := http.ListenAndServe(config.ListenAddress, nil); err != nil {
 		logger.Fatalf("Server error: %v", err)
 	}
 }
