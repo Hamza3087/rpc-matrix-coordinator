@@ -69,6 +69,13 @@ func (w *Worker) GetResourceStats(_ struct{}, reply *ResourceStats) error {
 
 // Add performs matrix addition with resource management
 func (w *Worker) Add(matrices [2][][]int, reply *[][]int) error {
+
+
+	fmt.Println("Sleeping for 2 seconds...")
+	time.Sleep(20 * time.Second)
+	fmt.Println("Woke up!")
+
+
 	if err := w.checkResourceAvailability(); err != nil {
 		return err
 	}
